@@ -198,4 +198,28 @@ public class JWTVotesEndpoint implements AssignmentEndpoint {
       }
     }
   }
+
+  @PostMapping("/JWT/votingshardreset")
+  @ResponseBody
+  public AttackResult resetVotesHard(
+      @CookieValue(value = "access_token", required = false) String accessToken) {
+    if (StringUtils.isEmpty(accessToken)) {
+      return failed(this).feedback("jwt-invalid-token").build();
+    } else {
+      try {
+        Jwt jwt = Jwts.parser().setSigningKey(JWT_PASSWORD).parse(accessToken);
+        Claims claims = (Claims) jwt.getBody();
+        boolean isAdmin = Boolean.valueOf(String.valueOf(claims.get("admin")));
+        if (!isAdmin) {
+          return failed(this).feedback("jwt-only-admin").build();
+        } else {
+          // Hard Reset
+          votes.values().forEach(vote -> vote.reset());
+          return success(this).build();
+        }
+      } catch (JwtException e) {
+        return failed(this).feedback("jwt-invalid-token").output(e.toString()).build();
+      }
+    }
+  }    
 }
