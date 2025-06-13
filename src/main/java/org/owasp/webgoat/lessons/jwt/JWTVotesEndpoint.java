@@ -184,8 +184,7 @@ public class JWTVotesEndpoint implements AssignmentEndpoint {
       return failed(this).feedback("jwt-invalid-token").build();
     } else {
       try {
-        Jwt jwt = Jwts.parser().setSigningKey(JWT_PASSWORD).parse(accessToken);
-        Claims claims = (Claims) jwt.getBody();
+        Claims claims = Jwts.parser().setSigningKey(JWT_PASSWORD).parseClaimsJws(accessToken).getBody();
         boolean isAdmin = Boolean.valueOf(String.valueOf(claims.get("admin")));
         if (!isAdmin) {
           return failed(this).feedback("jwt-only-admin").build();
@@ -198,4 +197,50 @@ public class JWTVotesEndpoint implements AssignmentEndpoint {
       }
     }
   }
+@PostMapping(value = "/JWT/votings/{title}")
+  @ResponseBody
+  @ResponseStatus(HttpStatus.ACCEPTED)
+  public ResponseEntity<?> vote(
+      @PathVariable String title,
+      @CookieValue(value = "access_token", required = false) String accessToken) {
+    if (StringUtils.isEmpty(accessToken)) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    } else {
+      try {
+        Claims claims = Jwts.parser().setSigningKey(JWT_PASSWORD).parseClaimsJws(accessToken).getBody();
+        String user = (String) claims.get("user");
+        if (!validUsers.contains(user)) {
+          return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        } else {
+          ofNullable(votes.get(title)).ifPresent(v -> v.incrementNumberOfVotes(totalVotes));
+          return ResponseEntity.accepted().build();
+        }
+      } catch (JwtException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+      }
+    }
+  }
+
+  @PostMapping("/JWT/votings2")
+  @ResponseBody
+  public AttackResult resetVotes2(
+      @CookieValue(value = "access_token", required = false) String accessToken) {
+    if (StringUtils.isEmpty(accessToken)) {
+      return failed(this).feedback("jwt-invalid-token").build();
+    } else {
+      try {
+        Claims claims = Jwts.parser().setSigningKey(JWT_PASSWORD).parseClaimsJws(accessToken).getBody();
+        boolean isAdmin = Boolean.valueOf(String.valueOf(claims.get("admin")));
+        if (!isAdmin) {
+          return failed(this).feedback("jwt-only-admin").build();
+        } else {
+          votes.values().forEach(vote -> vote.reset());
+          return success(this).build();
+        }
+      } catch (JwtException e) {
+        return failed(this).feedback("jwt-invalid-token").output(e.toString()).build();
+      }
+    }
+  }
+    
 }
