@@ -30,6 +30,12 @@ public class SSRFTask2 implements AssignmentEndpoint {
     return furBall(url);
   }
 
+  @PostMapping("/SSRF/task22")
+  @ResponseBody
+  public AttackResult completed2(@RequestParam String url) {
+    return fooBar(url);
+  }
+
   protected AttackResult furBall(String url) {
     if (url.matches("http://ifconfig\\.pro")) {
       String html;
@@ -51,7 +57,22 @@ public class SSRFTask2 implements AssignmentEndpoint {
     return getFailedResult(html);
   }
 
-  private AttackResult getFailedResult(String errorMsg) {
-    return failed(this).feedback("ssrf.failure").output(errorMsg).build();
-  }
+    protected AttackResult fooBar(String url) {
+        // Only allow the specific, expected URL
+        if ("http://ifconfig.pro".equals(url)) {
+            String html;
+            try (InputStream in = new URL(url).openStream()) {
+                html = new String(in.readAllBytes(), StandardCharsets.UTF_8)
+                        .replaceAll("\n", "<br>");
+            } catch (MalformedURLException e) {
+                return getFailedResult(e.getMessage());
+            } catch (IOException e) {
+                html = "<html><body>Although the http://ifconfig.pro site is down, you still managed to solve"
+                        + " this exercise the right way!</body></html>";
+            }
+            return success(this).feedback("ssrf.success").output(html).build();
+        }
+        var html = "<img class=\"image\" alt=\"image post\" src=\"images/cat.jpg\">";
+        return getFailedResult(html);
+    }
 }
