@@ -1,0 +1,81 @@
+name: Deploy Pipeline
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  deploy-dev:
+    name: Deploy to DEV
+    runs-on: ubuntu-latest
+    environment: DEV
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Simulate Deploy to DEV
+        run: echo "Deploying to DEV environment"
+
+  sast-policy:
+    name: Run SAST Policy
+    runs-on: ubuntu-latest
+    needs: deploy-dev
+    steps:
+      - name: Validate SAST Security Policy on open alerts in backlog
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.SAST_POLICY_TOKEN }}
+        run: |
+          # SLA POLICY
+          $severityDays = @{
+              critical = 0
+              high = 30
+              medium = 90
+              low = 180
+              error = 30
+              warning = 90
+              note = 180
+          }
+          
+          $alerts = gh api /repos/${{ github.repository }}/code-scanning/alerts?state=open --paginate | ConvertFrom-Json
+          $currentTime = [datetime]::UtcNow
+          $violations = @{}
+          foreach ($severity in $severityDays.Keys) {
+            $violations[$severity] = ($alerts | Where-Object { $_.rule.security_severity_level -eq $severity -and ($currentTime - [datetime]::Parse($_.created_at)).TotalDays -gt $severityDays[$severity] }).Count
+          }
+          $policyViolations = $violations.GetEnumerator() | Where-Object { $_.Value -gt 0 }
+
+          if ($policyViolations) {
+            $violationDetails = ($policyViolations | ForEach-Object { "$($_.Key): $($_.Value) alerts > $($severityDays[$_.Key]) days" }) -join "; "
+            $errorMessage = "SAST Policy threshold not met. Violations: $violationDetails. See alerts at: https://github.com/${{ github.repository }}/security/code-scanning"
+            Write-Host $errorMessage
+            Write-Output "::error title=SAST Policy Violation::$errorMessage"
+            exit 1
+          } else {
+            Write-Host "No SAST Policy violations found."
+          }
+
+  deploy-uat:
+    name: Deploy to UAT
+    runs-on: ubuntu-latest
+    environment: UAT
+    needs: sast-policy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Simulate Deploy to UAT
+        run: echo "Deploying to UAT environment"
+
+  deploy-prod:
+    name: Deploy to PROD
+    runs-on: ubuntu-latest
+    environment: PROD
+    needs: deploy-uat
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Simulate Deploy to PROD
+        run: echo "Deploying to PROD environment"
