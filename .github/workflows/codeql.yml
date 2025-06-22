@@ -73,24 +73,7 @@ jobs:
       with:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
-        config: | 
-          threat-models: local
-          
-          queries:
-            - name: Expands analysis to use the built-in security-extended suite
-              uses: security-extended
-            # - name: Use an external query (run a single query from an external CodeQL repo without pre-compilation)
-            #   uses: Forrester-Wave-Demo-Q3-2025/custom-codeql/java/WaveSqlTainted.ql@main              
-          packs:
-            # For Java and Kotlin analysis
-            #  - Use an external package:query (precompiled and hosted on the GitHub package registy)
-            java:          
-              - forrester-wave-demo-q3-2025/codeql-custom-java:WaveSqlTainted.ql
-          query-filters:
-            # Exclude the default SQL Injection query to replace with the above
-            - exclude:
-                id: java/sql-injection
-                    
+        config-file: Forrester-Wave-Demo-Q3-2025/custom-codeql/configs/default.yml@main
         # If you wish to specify custom queries, you can do so here or in a config file.
         # By default, queries listed here will override any specified in a config file.
         # Prefix the list here with "+" to use these queries and those in the config file.
