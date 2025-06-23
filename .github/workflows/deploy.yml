@@ -40,7 +40,6 @@ jobs:
               warning = 90
               note = 180
           }
-          
           $alerts = gh api /repos/${{ github.repository }}/code-scanning/alerts?state=open --paginate | ConvertFrom-Json
           $currentTime = [datetime]::UtcNow
           $violations = @{}
